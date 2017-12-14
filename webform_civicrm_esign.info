@@ -1,0 +1,5 @@
+name = Webform CiviCRM e-sign
+description = Webform CiviCRM integration for esign
+dependencies[] = civicrm
+core = 7.x
+version = 7.x-1.0

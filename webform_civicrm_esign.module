@@ -1,0 +1,57 @@
+<?php
+
+function webform_civicrm_esign_civicrm_post($op, $name, $id, $dao) {
+  global $values;
+
+  switch ($name) {
+    case 'Case':
+      $values['case_id'] = $id;
+      break;
+    case 'Activity':
+      $values['activity_id'] = $id;
+      break;
+  }
+}
+
+/**
+ * implementation of hook_webform_submission_insert
+ * @param $node
+ * @param $submission
+ *
+ * @throws \CiviCRM_API3_Exception
+ */
+function webform_civicrm_esign_webform_submission_insert($node, $submission) {
+  civicrm_initialize();
+  global $values;
+
+  if (!$node->type == 'webform') {
+    return;
+  }
+
+  foreach ($node->webform['components'] as $componentKey => $componentDetail) {
+    if ($componentDetail['type'] == 'esign') {
+      $esignComponentId = $componentKey;
+      break;
+    }
+  }
+  if (empty($esignComponentId)) {
+    return;
+  }
+
+  // split the string on commas
+  // $data[ 0 ] == "data:image/png;base64"
+  // $data[ 1 ] == <actual base64 string>
+  $data = explode(',', $submission->data[$esignComponentId]['esignature']);
+  // we could add validation here with ensuring count( $data ) > 1
+  $image = base64_decode($data[1]);
+
+  // Create an attachment for a custom file field
+  $result = civicrm_api3('Attachment', 'create', array(
+    'field_name' => 'custom_9',
+    'entity_id' => $values['activity_id'],
+    'name' => 'signature.png',
+    'mime_type' => 'image/png',
+    'content' => $image,
+  ));
+  return;
+}
