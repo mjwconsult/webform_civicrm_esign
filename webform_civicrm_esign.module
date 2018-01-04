@@ -8,7 +8,7 @@ function webform_civicrm_esign_civicrm_post($op, $name, $id, $dao) {
       $values['case_id'] = $id;
       break;
     case 'Activity':
-      $values['activity_id'] = $id;
+      $values['activity_id'][$dao->activity_type_id] = $id;
       break;
   }
 }
@@ -31,10 +31,16 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
   foreach ($node->webform['components'] as $componentKey => $componentDetail) {
     if ($componentDetail['type'] == 'esign') {
       $esignComponentId = $componentKey;
-      break;
+    }
+    if ($componentDetail['name'] == 'esign_custom_field') {
+      $esignCustomFieldId = $componentKey;
+    }
+    if ($componentDetail['name'] == 'esign_activity_type_id') {
+      $esignActivityTypeIdKey = $componentKey;
     }
   }
-  if (empty($esignComponentId)) {
+  if (empty($esignComponentId) || empty($esignCustomFieldId) || empty($esignActivityTypeIdKey)) {
+    watchdog('webform_civicrm_esign', 'One of esign, esign_custom_field, esign_activity_type_id fields were not found');
     return;
   }
 
@@ -45,10 +51,17 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
   // we could add validation here with ensuring count( $data ) > 1
   $image = base64_decode($data[1]);
 
+  $customfield = reset($submission->data[$esignCustomFieldId]);
+  $activityTypeId = reset($submission->data[$esignActivityTypeIdKey]);
+
+  if (array_key_exists($activityTypeId, $values['activity_id'])) {
+    $activityId = $values['activity_id'][$activityTypeId];
+  }
+
   // Create an attachment for a custom file field
   $result = civicrm_api3('Attachment', 'create', array(
-    'field_name' => 'custom_9',
-    'entity_id' => $values['activity_id'],
+    'field_name' => $customfield,
+    'entity_id' => $activityId,
     'name' => 'signature.png',
     'mime_type' => 'image/png',
     'content' => $image,
