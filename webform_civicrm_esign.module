@@ -24,6 +24,8 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
   civicrm_initialize();
   global $values;
 
+  watchdog('webform_civicrm_esign', 'Into submission_insert');
+
   if (!$node->type == 'webform') {
     return;
   }
