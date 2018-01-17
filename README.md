@@ -2,6 +2,9 @@
 
 Module to work with the drupal esign module and add the signature as a file to a CiviCRM activity.
 
+## Requirements
+Does not work with CiviCRM 4.7.20 (a blank file is generated). Tested with CiviCRM 4.7.29, some earlier versions may work!.
+
 ## Setup
 Download and install webform_civicrm and webform_civicrm_esign and webform_esign
 

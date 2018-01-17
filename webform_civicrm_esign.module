@@ -24,8 +24,6 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
   civicrm_initialize();
   global $values;
 
-  watchdog('webform_civicrm_esign', 'Into submission_insert');
-
   if (!$node->type == 'webform') {
     return;
   }
@@ -60,6 +58,7 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
     $activityId = $values['activity_id'][$activityTypeId];
   }
 
+  // Create an attachment for a custom file field
   $attachmentParams = array(
     'field_name' => $customfield,
     'entity_id' => $activityId,
@@ -67,9 +66,6 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
     'mime_type' => 'image/png',
     'content' => $image,
   );
-  watchdog('webform_civicrm_esign', 'attachmentParams: ' . print_r($attachmentParams, TRUE));
-
-  // Create an attachment for a custom file field
-  $result = civicrm_api3('Attachment', 'create', $attachmentParams);
+  civicrm_api3('Attachment', 'create', $attachmentParams);
   return;
 }
