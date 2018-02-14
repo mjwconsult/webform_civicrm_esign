@@ -23,4 +23,7 @@ For each webform that you want to save the signature to an activity you need:
 
 Make sure CiviCRM processing is enabled on the webform and that you have added one activity with the type you specified in esign_activity_type_id field.
 
-Optionally, file the activity on a case by enabling a Case within the CiviCRM processing and setting the Activity to "File on Case". 
+Optionally, file the activity on a case by enabling a Case within the CiviCRM processing and setting the Activity to "File on Case".
+
+* Filenames will be created in the format "sig_20191119000000_firstnamelastname.png" if civicrm firstname/lastname fields are found.  If not name will be omitted.
+* esign_custom_field and esign_activity_type_id will not be shown in emails / submission views. 

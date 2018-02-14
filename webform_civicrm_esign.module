@@ -31,6 +31,19 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
   foreach ($node->webform['components'] as $componentKey => $componentDetail) {
     if ($componentDetail['type'] == 'esign') {
       $esignComponentId = $componentKey;
+      continue;
+    }
+
+    $dataKeys[$componentDetail['form_key']] = $componentKey;
+
+    /*switch ($componentDetail['name']) {
+      case 'esign_custom_field':
+        $dataKeys['esign_custom_field'] = $componentKey;
+        break;
+
+      case 'esign_activity_type_id':
+        $dataKeys['esign_activity_type_id'] = $componentKey;
+        break;
     }
     if ($componentDetail['name'] == 'esign_custom_field') {
       $esignCustomFieldId = $componentKey;
@@ -38,8 +51,11 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
     if ($componentDetail['name'] == 'esign_activity_type_id') {
       $esignActivityTypeIdKey = $componentKey;
     }
+    */
+    // civicrm_1_contact_1_contact_first_name
+    // civicrm_1_contact_1_contact_last_name
   }
-  if (empty($esignComponentId) || empty($esignCustomFieldId) || empty($esignActivityTypeIdKey)) {
+  if (empty($esignComponentId) || empty($dataKeys['esign_custom_field']) || empty($dataKeys['esign_activity_type_id'])) {
     watchdog('webform_civicrm_esign', 'One of esign, esign_custom_field, esign_activity_type_id fields were not found');
     return;
   }
@@ -51,8 +67,19 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
   // we could add validation here with ensuring count( $data ) > 1
   $image = base64_decode($data[1]);
 
-  $customfield = reset($submission->data[$esignCustomFieldId]);
-  $activityTypeId = reset($submission->data[$esignActivityTypeIdKey]);
+  $customfield = reset($submission->data[$dataKeys['esign_custom_field']]);
+  $activityTypeId = reset($submission->data[$dataKeys['esign_activity_type_id']]);
+
+  // Generate a suitable filename (sig_20170101000000_joe_bloggs.png)
+  $firstName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_first_name', $dataKeys), $submission->data, NULL);
+  $lastName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_last_name', $dataKeys), $submission->data, NULL);
+  $firstName = reset($firstName);
+  $lastName = reset($lastName);
+  empty($firstName . $lastName) ? $fullName = '' : $fullName = '_' . $firstName . $lastName;
+  $datestamp = date('YmdHis');
+  $filename = 'sig_' . $datestamp . $fullName . '.png';
+
+  if (!empty($submission->data[$dataKeys['civicrm_1_contact_1_contact_first_name']]))
 
   if (array_key_exists($activityTypeId, $values['activity_id'])) {
     $activityId = $values['activity_id'][$activityTypeId];
@@ -62,10 +89,21 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
   $attachmentParams = array(
     'field_name' => $customfield,
     'entity_id' => $activityId,
-    'name' => 'signature.png',
+    'name' => $filename,
     'mime_type' => 'image/png',
     'content' => $image,
   );
   civicrm_api3('Attachment', 'create', $attachmentParams);
   return;
+}
+
+/**
+ * Hide special purpose fields from display in emails / submission view
+ * @param $renderable
+ */
+function webform_civicrm_esign_webform_submission_render_alter(&$renderable) {
+  $fieldsToUnset = array('esign_custom_field', 'esign_activity_type_id');
+  foreach ($fieldsToUnset as $fieldname) {
+    unset($renderable[$fieldname]);
+  }
 }
