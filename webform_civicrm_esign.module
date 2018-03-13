@@ -35,25 +35,6 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
     }
 
     $dataKeys[$componentDetail['form_key']] = $componentKey;
-
-    /*switch ($componentDetail['name']) {
-      case 'esign_custom_field':
-        $dataKeys['esign_custom_field'] = $componentKey;
-        break;
-
-      case 'esign_activity_type_id':
-        $dataKeys['esign_activity_type_id'] = $componentKey;
-        break;
-    }
-    if ($componentDetail['name'] == 'esign_custom_field') {
-      $esignCustomFieldId = $componentKey;
-    }
-    if ($componentDetail['name'] == 'esign_activity_type_id') {
-      $esignActivityTypeIdKey = $componentKey;
-    }
-    */
-    // civicrm_1_contact_1_contact_first_name
-    // civicrm_1_contact_1_contact_last_name
   }
   if (empty($esignComponentId) || empty($dataKeys['esign_custom_field']) || empty($dataKeys['esign_activity_type_id'])) {
     watchdog('webform_civicrm_esign', 'One of esign, esign_custom_field, esign_activity_type_id fields were not found');
@@ -78,8 +59,6 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
   empty($firstName . $lastName) ? $fullName = '' : $fullName = '_' . $firstName . $lastName;
   $datestamp = date('YmdHis');
   $filename = 'sig_' . $datestamp . $fullName . '.png';
-
-  if (!empty($submission->data[$dataKeys['civicrm_1_contact_1_contact_first_name']]))
 
   if (array_key_exists($activityTypeId, $values['activity_id'])) {
     $activityId = $values['activity_id'][$activityTypeId];
