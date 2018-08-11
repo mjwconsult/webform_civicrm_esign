@@ -63,6 +63,10 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
   if (array_key_exists($activityTypeId, $values['activity_id'])) {
     $activityId = $values['activity_id'][$activityTypeId];
   }
+  else {
+    watchdog('webform_civicrm_esign', 'ERROR: Activity ID not found - you need to add an activity in the webform_civicrm configuration.');
+    return;
+  }
 
   // Create an attachment for a custom file field
   $attachmentParams = array(
