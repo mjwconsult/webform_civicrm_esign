@@ -27,12 +27,12 @@ For each webform that you want to save the signature to an activity you need:
 #### On each webform:
 
 * A field of type "esign".
-* A field with name: esign_custom_field, type: hidden, value: Comma separated list of custom field IDs
+* A field with name: esign_custom_field, type: hidden, value: Comma separated list of custom field IDs. IDs must be listed in the same order of the activities added on the CiviCRM tab of the webform.
   - Example: A single custom field on a single activity: custom_9
   - Example: A single custom field on multiple activities (different types): custom_9,custom_9
   - Example: Two custom fields on a single activity: custom_9,custom_10
   - Example: Different custom fields on different activities (different types): custom_9,custom_10
-* A field with name: esign_activity_type_id, type: hidden, value: Comma separated list of Activiy Type IDs
+* A field with name: esign_activity_type_id, type: hidden, value: Comma separated list of Activiy Type IDs. IDs must be listed in the same order of the activities added on the CiviCRM tab of the webform.
   - Example: A single activity: 70
   - Example: Multiple activities: 70,71
   - **Warning: Currently multiple activities of the same activity type in one form are not supported**
