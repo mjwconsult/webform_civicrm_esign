@@ -7,6 +7,7 @@ function webform_civicrm_esign_civicrm_post($op, $name, $id, $dao) {
     case 'Case':
       $values['case_id'] = $id;
       break;
+
     case 'Activity':
       $values['activity_id'][$dao->activity_type_id] = $id;
       break;
@@ -24,59 +25,67 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
   civicrm_initialize();
   global $values;
 
+  //We will potentially be collecting multiple components
+  $componentArray = array();
+
   if (!$node->type == 'webform') {
     return;
   }
 
   foreach ($node->webform['components'] as $componentKey => $componentDetail) {
     if ($componentDetail['type'] == 'esign') {
-      $esignComponentId = $componentKey;
+      $componentArray[] = $componentKey;
       continue;
     }
 
     $dataKeys[$componentDetail['form_key']] = $componentKey;
   }
-  if (empty($esignComponentId) || empty($dataKeys['esign_custom_field']) || empty($dataKeys['esign_activity_type_id'])) {
+  if (empty($componentArray) || empty($dataKeys['esign_custom_field']) || empty($dataKeys['esign_activity_type_id'])) {
     watchdog('webform_civicrm_esign', 'One of esign, esign_custom_field, esign_activity_type_id fields were not found');
     return;
   }
+  //Define our potential arrays of custom field and activity ID combinations (Manually wired by following readme as per other module configs)
+  $customFieldArr = explode(',', reset($submission->data[$dataKeys['esign_custom_field']]));
+  $activityTypeArr = explode(',', reset($submission->data[$dataKeys['esign_activity_type_id']]));
 
-  // split the string on commas
-  // $data[ 0 ] == "data:image/png;base64"
-  // $data[ 1 ] == <actual base64 string>
-  $data = explode(',', $submission->data[$esignComponentId]['esignature']);
-  // we could add validation here with ensuring count( $data ) > 1
-  $image = base64_decode($data[1]);
+  foreach ($componentArray as $caKey => $esignComponentId) {
+    // split the string on commas
+    // $data[ 0 ] == "data:image/png;base64"
+    // $data[ 1 ] == <actual base64 string>
+    $data = explode(',', $submission->data[$esignComponentId]['esignature']);
+    // we could add validation here with ensuring count( $data ) > 1
+    $image = base64_decode($data[1]);
+    //Get the correct custom file field from a potential array of field IDs
+    $customfield = $customFieldArr[$caKey];
+    //Get the correct activity type ID from a potential array of type IDs
+    $activityTypeId = $activityTypeArr[$caKey];
+    // Generate a suitable filename (sig_20170101000000_joe_bloggs.png)
+    $firstName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_first_name', $dataKeys), $submission->data, NULL);
+    $lastName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_last_name', $dataKeys), $submission->data, NULL);
+    $firstName = reset($firstName);
+    $lastName = reset($lastName);
+    empty($firstName . $lastName) ? $fullName = '' : $fullName = '_' . $firstName . $lastName;
+    $datestamp = date('YmdHis');
+    $filename = 'sig_' . $datestamp . $fullName . '.png';
 
-  $customfield = reset($submission->data[$dataKeys['esign_custom_field']]);
-  $activityTypeId = reset($submission->data[$dataKeys['esign_activity_type_id']]);
+    if (array_key_exists($activityTypeId, $values['activity_id'])) {
+      $activityId = $values['activity_id'][$activityTypeId];
+    }
+    else {
+      watchdog('webform_civicrm_esign', 'ERROR: Activity ID not found - you need to add an activity in the webform_civicrm configuration.');
+      return;
+    }
 
-  // Generate a suitable filename (sig_20170101000000_joe_bloggs.png)
-  $firstName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_first_name', $dataKeys), $submission->data, NULL);
-  $lastName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_last_name', $dataKeys), $submission->data, NULL);
-  $firstName = reset($firstName);
-  $lastName = reset($lastName);
-  empty($firstName . $lastName) ? $fullName = '' : $fullName = '_' . $firstName . $lastName;
-  $datestamp = date('YmdHis');
-  $filename = 'sig_' . $datestamp . $fullName . '.png';
-
-  if (array_key_exists($activityTypeId, $values['activity_id'])) {
-    $activityId = $values['activity_id'][$activityTypeId];
+    // Create an attachment for a custom file field
+    $attachmentParams = array(
+      'field_name' => $customfield,
+      'entity_id' => $activityId,
+      'name' => $filename,
+      'mime_type' => 'image/png',
+      'content' => $image,
+    );
+    civicrm_api3('Attachment', 'create', $attachmentParams);
   }
-  else {
-    watchdog('webform_civicrm_esign', 'ERROR: Activity ID not found - you need to add an activity in the webform_civicrm configuration.');
-    return;
-  }
-
-  // Create an attachment for a custom file field
-  $attachmentParams = array(
-    'field_name' => $customfield,
-    'entity_id' => $activityId,
-    'name' => $filename,
-    'mime_type' => 'image/png',
-    'content' => $image,
-  );
-  civicrm_api3('Attachment', 'create', $attachmentParams);
   return;
 }
 
