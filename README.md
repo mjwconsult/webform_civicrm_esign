@@ -30,7 +30,7 @@ For each webform that you want to save the signature to an activity you need:
 * One or more fields of type `esign` (one per signature needed).
 * A field with name: `esign_custom_field`; type: `hidden`; value: A comma-delimited list of custom field names (e.g., `custom_1` or `custom_1,custom_2`). If multiple custom fields are specified, they will correspond to the signature fields in the order you add them to the form.  See _[Setup Examples](#setup-examples)_ below.
 * A field with name: `esign_entity`; type: `hidden`; value: A comma-delimited list of entities (e.g., `Activity` or `Activity,Participant`). If multiple entities are specified, they will correspond to the signature fields in the order you add them to the form.  See _[Setup Examples](#setup-examples)_ below.
-* A field with name: `esign_entity_type_id`; type: `hidden`; value: A comma-delimited list of Activity Type IDs (for Activities and Cases) or Event IDs(for Participants). If multiple entitiy IDs are specified, they will correspond to the signature fields in the order you add them to the form.  See _[Setup Examples](#setup-examples)_ below.
+* A field with name: `esign_entity_type_id`; type: `hidden`; value: A comma-delimited list of Activity Type IDs (for Activities and Cases) or Event IDs(for Participants). If multiple entitiy IDs are specified, they will correspond to the signature fields in the order you add them to the form.  See _[Setup Examples](#setup-examples)_ below.  You can also specify `All` instead of an entity ID; in that case, all records of this entity type will receive the signature.
 * Make sure CiviCRM processing is enabled on the webform and that you have added at least one activity/and or event registration of the type(s) you specified in `esign_entity_type_id` field.
 
 Optionally, file the activity on a case by enabling a Case within the CiviCRM processing and setting the Activity to "File on Case".
@@ -48,6 +48,8 @@ Optionally, file the activity on a case by enabling a Case within the CiviCRM pr
 |Two custom fields on a single activity|custom_9,custom_10|Activity,Activity|70,70|Note that the same activity_type_id is given twice|
 |Different custom fields on different activities (different types)|custom_9,custom_10|Activity,Activity|70,71||
 |An activity and a participant|custom_9,custom_10|Activity,Participant|70,3|activity_type_id for activity, event_id for participant|
+|All new activities|custom_9|Activity|All||
+|All participant records and a "meeting" activity|custom_10,custom_9|Participant,Activity|All,1||
 
 
 ## Known issues
