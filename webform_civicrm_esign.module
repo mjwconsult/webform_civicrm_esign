@@ -77,15 +77,7 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
     $entityTypeId = $entityTypeIdArr[$caKey];
     //Get the correct entity ID from a potential array of entities
     $entity = $entityArr[$caKey];
-    // Generate a suitable filename (sig_20170101000000_joe_bloggs.png)
-    $firstName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_first_name', $dataKeys), $submission->data, NULL);
-    $lastName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_last_name', $dataKeys), $submission->data, NULL);
-    $firstName = reset($firstName);
-    $lastName = reset($lastName);
-    empty($firstName . $lastName) ? $fullName = '' : $fullName = '_' . $firstName . $lastName;
-    $datestamp = date('YmdHis');
-    $filename = 'sig_' . $datestamp . $fullName . '.png';
-
+    $filename = webform_civicrm_esign_generateFilename($dataKeys, $submission);
     $valueKey = strtolower($entity) . '_id';
     if (array_key_exists($entityTypeId, $values[$valueKey])) {
       $entityId = $values[$valueKey][$entityTypeId];
@@ -106,6 +98,20 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
     civicrm_api3('Attachment', 'create', $attachmentParams);
   }
   return;
+}
+
+/**
+ * Generate a suitable filename (sig_20170101000000_joe_bloggs.png)
+ */
+function webform_civicrm_esign_generateFilename(array $dataKeys, stdClass $submission) : string {
+  $firstName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_first_name', $dataKeys), $submission->data, NULL);
+  $lastName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_last_name', $dataKeys), $submission->data, NULL);
+  $firstName = reset($firstName);
+  $lastName = reset($lastName);
+  empty($firstName . $lastName) ? $fullName = '' : $fullName = '_' . $firstName . $lastName;
+  $datestamp = date('YmdHis');
+  $filename = 'sig_' . $datestamp . $fullName . '.png';
+  return $filename;
 }
 
 /**
