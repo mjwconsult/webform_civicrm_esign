@@ -11,6 +11,10 @@ function webform_civicrm_esign_civicrm_post($op, $name, $id, $dao) {
     case 'Activity':
       $values['activity_id'][$dao->activity_type_id] = $id;
       break;
+
+    case 'Participant':
+      $values['participant_id'][$dao->event_id] = (int) $id;
+      break;
   }
 }
 
@@ -25,8 +29,8 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
   civicrm_initialize();
   global $values;
 
-  //We will potentially be collecting multiple components
-  $componentArray = array();
+  // We will potentially be collecting multiple signatures.
+  $componentArray = [];
 
   if (!$node->type == 'webform') {
     return;
@@ -40,13 +44,25 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
 
     $dataKeys[$componentDetail['form_key']] = $componentKey;
   }
-  if (empty($componentArray) || empty($dataKeys['esign_custom_field']) || empty($dataKeys['esign_activity_type_id'])) {
-    watchdog('webform_civicrm_esign', 'One of esign, esign_custom_field, esign_activity_type_id fields were not found');
-    return;
+
+  // Support legacy "esign_activity_type_id" field by converting to the new format.
+  if (!empty($dataKeys['esign_activity_type_id'])) {
+    if (!empty($dataKeys['esign_entity']) || !empty($dataKeys['esign_entity_type_id'])) {
+      watchdog('webform_civicrm_esign', 'Your webform can not contain both "esign_activity_type_id" and the "esign_entity" or "esign_entity_type_id" fields.');
+    }
+    $entityArr = array_fill(0, count($componentArray), 'Activity');
+    $entityTypeIdArr = explode(',', reset($submission->data[$dataKeys['esign_activity_type_id']]));
   }
-  //Define our potential arrays of custom field and activity ID combinations (Manually wired by following readme as per other module configs)
+
+  if (empty($componentArray) || empty($dataKeys['esign_custom_field']) || empty($dataKeys['esign_entity']) || empty($dataKeys['esign_entity_id'])) {
+    watchdog('webform_civicrm_esign', 'One of esign, esign_custom_field, esign_entity or esign_entity_id fields were not found');
+  }
+  //Define our potential arrays of entity, entity_type_id, and custom field combinations (Manually wired by following readme as per other module configs)
   $customFieldArr = explode(',', reset($submission->data[$dataKeys['esign_custom_field']]));
-  $activityTypeArr = explode(',', reset($submission->data[$dataKeys['esign_activity_type_id']]));
+  if (!isset($entityArr)) {
+    $entityArr = explode(',', reset($submission->data[$dataKeys['esign_entity']]));
+    $entityTypeIdArr = explode(',', reset($submission->data[$dataKeys['esign_entity_type_id']]));
+  }
 
   foreach ($componentArray as $caKey => $esignComponentId) {
     // split the string on commas
@@ -57,36 +73,50 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
     $image = base64_decode($data[1]);
     //Get the correct custom file field from a potential array of field IDs
     $customfield = $customFieldArr[$caKey];
-    //Get the correct activity type ID from a potential array of type IDs
-    $activityTypeId = $activityTypeArr[$caKey];
-    // Generate a suitable filename (sig_20170101000000_joe_bloggs.png)
-    $firstName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_first_name', $dataKeys), $submission->data, NULL);
-    $lastName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_last_name', $dataKeys), $submission->data, NULL);
-    $firstName = reset($firstName);
-    $lastName = reset($lastName);
-    empty($firstName . $lastName) ? $fullName = '' : $fullName = '_' . $firstName . $lastName;
-    $datestamp = date('YmdHis');
-    $filename = 'sig_' . $datestamp . $fullName . '.png';
-
-    if (array_key_exists($activityTypeId, $values['activity_id'])) {
-      $activityId = $values['activity_id'][$activityTypeId];
+    //Get the correct entity ID from a potential array of entity IDs
+    $entityTypeId = $entityTypeIdArr[$caKey];
+    //Get the correct entity ID from a potential array of entities
+    $entity = $entityArr[$caKey];
+    $filename = webform_civicrm_esign_generateFilename($dataKeys, $submission);
+    $valueKey = strtolower($entity) . '_id';
+    if (array_key_exists($entityTypeId, $values[$valueKey])) {
+      $entityIds[0] = $values[$valueKey][$entityTypeId];
     }
-    else {
-      watchdog('webform_civicrm_esign', 'ERROR: Activity ID not found - you need to add an activity in the webform_civicrm configuration.');
+    if ($entityTypeId == 'All') {
+      $entityIds = $values[$valueKey];
+    }
+    if (!$entityIds) {
+      watchdog('webform_civicrm_esign', 'ERROR: Entity ID not found - your webform_civicrm configuration must have an entity and entity ID corresponding to your esign_entity and esign_entity_id values.');
       return;
     }
 
-    // Create an attachment for a custom file field
-    $attachmentParams = array(
-      'field_name' => $customfield,
-      'entity_id' => $activityId,
-      'name' => $filename,
-      'mime_type' => 'image/png',
-      'content' => $image,
-    );
-    civicrm_api3('Attachment', 'create', $attachmentParams);
+    foreach ($entityIds as $entityId) {
+      // Create an attachment for a custom file field
+      $attachmentParams = array(
+        'field_name' => $customfield,
+        'entity_id' => $entityId,
+        'name' => $filename,
+        'mime_type' => 'image/png',
+        'content' => $image,
+      );
+      civicrm_api3('Attachment', 'create', $attachmentParams);
+    }
   }
   return;
+}
+
+/**
+ * Generate a suitable filename (sig_20170101000000_joe_bloggs.png)
+ */
+function webform_civicrm_esign_generateFilename(array $dataKeys, stdClass $submission) : string {
+  $firstName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_first_name', $dataKeys), $submission->data, NULL);
+  $lastName = CRM_Utils_Array::value(CRM_Utils_Array::value('civicrm_1_contact_1_contact_last_name', $dataKeys), $submission->data, NULL);
+  $firstName = reset($firstName);
+  $lastName = reset($lastName);
+  empty($firstName . $lastName) ? $fullName = '' : $fullName = '_' . $firstName . $lastName;
+  $datestamp = date('YmdHis');
+  $filename = 'sig_' . $datestamp . $fullName . '.png';
+  return $filename;
 }
 
 /**
