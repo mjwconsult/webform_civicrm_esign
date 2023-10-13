@@ -79,7 +79,7 @@ function webform_civicrm_esign_webform_submission_insert($node, $submission) {
     $entity = $entityArr[$caKey];
     $filename = webform_civicrm_esign_generateFilename($dataKeys, $submission);
     $valueKey = strtolower($entity) . '_id';
-    if (array_key_exists($entityTypeId, $values[$valueKey])) {
+    if (array_key_exists($entityTypeId, ($values[$valueKey] ?? []))) {
       $entityIds[0] = $values[$valueKey][$entityTypeId];
     }
     if ($entityTypeId == 'All') {
