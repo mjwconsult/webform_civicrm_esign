@@ -114,6 +114,8 @@ function webform_civicrm_esign_generateFilename(array $dataKeys, stdClass $submi
   $firstName = reset($firstName);
   $lastName = reset($lastName);
   empty($firstName . $lastName) ? $fullName = '' : $fullName = '_' . $firstName . $lastName;
+  // remove special characters
+  $fullName = preg_replace("/[^a-z0-9\_\-\.]/i", '', $fullName);
   $datestamp = date('YmdHis');
   $filename = 'sig_' . $datestamp . $fullName . '.png';
   return $filename;
